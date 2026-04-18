@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Rest Timer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #222;
+    --accent: #c8f135;
+    --accent-dim: #8aab1f;
+    --text: #f0f0f0;
+    --muted: #555;
+    --danger: #ff4444;
+    --rest-bg: #0d1a00;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    overflow-x: hidden;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding: 0;
+  }
+
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 24px;
+    gap: 28px;
+  }
+
+  .inputs-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .field-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .field-row .field {
+    flex: 1;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  label {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  input[type="number"] {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3.5rem;
+    letter-spacing: 0.06em;
+    padding: 12px 20px 8px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    -moz-appearance: textfield;
+    appearance: textfield;
+    line-height: 1;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+  }
+
+  input[type="number"]:focus {
+    border-color: var(--accent);
+    background: #151515;
+  }
+
+  input[type="number"][readonly] {
+    color: var(--accent);
+    background: var(--rest-bg);
+    border-color: var(--accent-dim);
+    cursor: default;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+  }
+
+  .actions {
+    display: flex;
+    flex-direction: row;
+    gap: 14px;
+  }
+
+  button:not(.stepper-btn) {
+    width: 100%;
+    padding: 20px 24px;
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s, background 0.15s;
+    outline: none;
+    background: transparent;
+    color: var(--accent);
+  }
+
+  button:not(.stepper-btn):hover:not(:disabled) {
+    background: rgba(200, 241, 53, 0.07);
+  }
+
+  button:not(.stepper-btn):active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  button:not(.stepper-btn):disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    border-color: var(--muted);
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .stepper {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .stepper input[type="number"] {
+    flex: 1;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    text-align: center;
+    padding: 12px 8px 8px;
+  }
+
+  .stepper-btns {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stepper-btn {
+    width: 44px;
+    flex: 1;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.2rem;
+    letter-spacing: 0;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    outline: none;
+    line-height: 1;
+  }
+
+  .stepper-btn:first-child {
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .stepper-btn:last-child {
+    border-radius: 0 0 4px 4px;
+  }
+
+  .stepper input:first-child + .stepper-btns .stepper-btn,
+  .stepper-btns + input {
+    border-radius: 0 4px 4px 0;
+  }
+
+  .stepper-btns {
+    order: 1;
+  }
+
+  .stepper input {
+    order: 0;
+    border-radius: 4px 0 0 4px;
+    border-right: none;
+  }
+
+  .stepper-btn:hover {
+    background: #1a1a1a;
+    color: var(--accent);
+  }
+
+  .stepper-btn:active {
+    background: #222;
+  }
+
+
+  .timer-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 28px 0 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .timer-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .timer-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 6rem;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    line-height: 1;
+  }
+
+  .timer-display.active {
+    color: var(--accent);
+  }
+
+  .timer-bar-wrap {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .timer-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 1s linear;
+    width: 0%;
+  }
+
+</style>
+</head>
+<body>
+
+<main>
+  <div class="inputs-section">
+    <div class="field-row">
+      <div class="field">
+        <label for="sets">Sets</label>
+        <div class="stepper">
+          <div class="stepper-btns">
+            <button class="stepper-btn" data-target="sets" data-delta="1">+</button>
+            <button class="stepper-btn" data-target="sets" data-delta="-1">−</button>
+          </div>
+          <input type="number" id="sets" min="1" max="99" value="4" readonly>
+        </div>
+      </div>
+      <div class="field">
+        <label for="reps">Reps</label>
+        <div class="stepper">
+          <div class="stepper-btns">
+            <button class="stepper-btn" data-target="reps" data-delta="1">+</button>
+            <button class="stepper-btn" data-target="reps" data-delta="-1">−</button>
+          </div>
+          <input type="number" id="reps" min="1" max="99" value="10" readonly>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="remaining">Current set</label>
+      <input type="number" id="remaining" min="0" max="99" value="1" readonly inputmode="none">
+    </div>
+  </div>
+
+  <div class="timer-section">
+    <span class="timer-label">Rest countdown</span>
+    <div class="timer-display" id="timer-display">1:00</div>
+    <div class="timer-bar-wrap">
+      <div class="timer-bar" id="timer-bar"></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="btn-rest">Rest</button>
+    <button id="btn-resume" disabled>Resume</button>
+  </div>
+</main>
+
+<script>
+  document.querySelectorAll('.stepper-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const delta = parseInt(btn.dataset.delta, 10);
+      const min   = parseInt(input.min, 10);
+      const max   = parseInt(input.max, 10);
+      const val   = parseInt(input.value, 10);
+      input.value = Math.min(max, Math.max(min, val + delta));
+    });
+  });
+
+  const setsInput     = document.getElementById('sets');
+  const remainingInput= document.getElementById('remaining');
+  const btnRest       = document.getElementById('btn-rest');
+  const btnResume     = document.getElementById('btn-resume');
+  const timerDisplay  = document.getElementById('timer-display');
+  const timerBar      = document.getElementById('timer-bar');
+
+  const REST_SECONDS  = 60;
+
+  let timerInterval   = null;
+  let vibrateInterval = null;
+  let secondsLeft     = 0;
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  function startVibrating() {
+    vibration = [400, 200, 400]
+    navigator.vibrate(vibration);
+    vibrateInterval = setInterval(() => {
+      navigator.vibrate(vibration);
+    }, 2000);
+  }
+
+  function stopVibrating() {
+    clearInterval(vibrateInterval);
+    vibrateInterval = null;
+    navigator.vibrate(0);
+  }
+
+  function startCountdown() {
+    stopTimer();
+    secondsLeft = REST_SECONDS;
+
+    timerDisplay.classList.add('active');
+    timerDisplay.textContent = formatTime(secondsLeft);
+    timerBar.style.width = '100%';
+
+    timerInterval = setInterval(() => {
+      secondsLeft--;
+      timerDisplay.textContent = formatTime(secondsLeft);
+      timerBar.style.width = `${(secondsLeft / REST_SECONDS) * 100}%`;
+
+      if (secondsLeft <= 0) {
+        stopTimer();
+        timerDisplay.textContent = '0:00';
+        timerBar.style.width = '0%';
+        const cur  = parseInt(remainingInput.value, 10);
+        const sets = parseInt(setsInput.value, 10);
+        if (cur < sets) {
+          btnResume.disabled = false;
+          if ('vibrate' in navigator) {
+            startVibrating();
+          }
+        }
+      }
+    }, 1000);
+  }
+
+  btnResume.addEventListener('click', () => {
+    btnResume.disabled = true;
+    if ('vibrate' in navigator) {
+      stopVibrating();
+    }
+    let cur = parseInt(remainingInput.value, 10);
+    remainingInput.value = cur + 1;
+    cur  = parseInt(remainingInput.value, 10);
+    const sets = parseInt(setsInput.value, 10);
+    if (cur < sets) {
+      btnRest.disabled = false;
+    }
+  });
+
+  btnRest.addEventListener('click', () => {
+    btnRest.disabled = true;
+    startCountdown();
+  });
+</script>
+</body>
+</html>
