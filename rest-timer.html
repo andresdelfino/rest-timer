@@ -15,7 +15,6 @@
     --accent-dim: #8aab1f;
     --text: #f0f0f0;
     --muted: #555;
-    --danger: #ff4444;
     --rest-bg: #0d1a00;
   }
 
@@ -32,6 +31,10 @@
     color: var(--text);
     font-family: 'IBM Plex Mono', monospace;
     overflow-x: hidden;
+  }
+
+  body.inverted {
+    filter: invert(1) hue-rotate(180deg);
   }
 
   body {
@@ -110,11 +113,6 @@
     background: var(--rest-bg);
     border-color: var(--accent-dim);
     cursor: default;
-  }
-
-  .divider {
-    height: 1px;
-    background: var(--border);
   }
 
   .actions {
@@ -318,16 +316,20 @@
 </main>
 
 <script>
-  document.querySelectorAll('.stepper-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = document.getElementById(btn.dataset.target);
-      const delta = parseInt(btn.dataset.delta, 10);
-      const min   = parseInt(input.min, 10);
-      const max   = parseInt(input.max, 10);
-      const val   = parseInt(input.value, 10);
-      input.value = Math.min(max, Math.max(min, val + delta));
-    });
-  });
+  'use strict';
+
+  function handleStepperClick() {
+    const input = document.getElementById(this.dataset.target);
+    const delta = parseInt(this.dataset.delta, 10);
+    const min   = parseInt(input.min, 10);
+    const max   = parseInt(input.max, 10);
+    const val   = parseInt(input.value, 10);
+    input.value = Math.min(max, Math.max(min, val + delta));
+  }
+
+  for (const btn of document.querySelectorAll('.stepper-btn')) {
+    btn.addEventListener('click', handleStepperClick);
+  }
 
   const setsInput     = document.getElementById('sets');
   const remainingInput= document.getElementById('remaining');
@@ -354,11 +356,12 @@
   }
 
   function startVibrating() {
-    vibration = [400, 200, 400]
-    navigator.vibrate(vibration);
-    vibrateInterval = setInterval(() => {
+    const vibration = [400, 200, 400];
+    function tickVibration() {
       navigator.vibrate(vibration);
-    }, 2000);
+    }
+    navigator.vibrate(vibration);
+    vibrateInterval = setInterval(tickVibration, 2000);
   }
 
   function stopVibrating() {
@@ -375,7 +378,7 @@
     timerDisplay.textContent = formatTime(secondsLeft);
     timerBar.style.width = '100%';
 
-    timerInterval = setInterval(() => {
+    function tickCountdown() {
       secondsLeft--;
       timerDisplay.textContent = formatTime(secondsLeft);
       timerBar.style.width = `${(secondsLeft / REST_SECONDS) * 100}%`;
@@ -384,6 +387,7 @@
         stopTimer();
         timerDisplay.textContent = '0:00';
         timerBar.style.width = '0%';
+        document.body.classList.add('inverted');
         const cur  = parseInt(remainingInput.value, 10);
         const sets = parseInt(setsInput.value, 10);
         if (cur < sets) {
@@ -393,11 +397,15 @@
           }
         }
       }
-    }, 1000);
+    }
+
+    timerInterval = setInterval(tickCountdown, 1000);
   }
 
-  btnResume.addEventListener('click', () => {
+  function handleResumeClick() {
     btnResume.disabled = true;
+    timerDisplay.classList.remove('active');
+    document.body.classList.remove('inverted');
     if ('vibrate' in navigator) {
       stopVibrating();
     }
@@ -408,12 +416,15 @@
     if (cur < sets) {
       btnRest.disabled = false;
     }
-  });
+  }
 
-  btnRest.addEventListener('click', () => {
+  function handleRestClick() {
     btnRest.disabled = true;
     startCountdown();
-  });
+  }
+
+  btnResume.addEventListener('click', handleResumeClick);
+  btnRest.addEventListener('click', handleRestClick);
 </script>
 </body>
 </html>
