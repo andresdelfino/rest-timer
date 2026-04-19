@@ -343,6 +343,7 @@
   let timerInterval   = null;
   let vibrateInterval = null;
   let secondsLeft     = 0;
+  let deadline        = 0;
 
   function formatTime(s) {
     const m = Math.floor(s / 60);
@@ -353,6 +354,13 @@
   function stopTimer() {
     clearInterval(timerInterval);
     timerInterval = null;
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }
+
+  function handleVisibilityChange() {
+    if (!document.hidden && timerInterval !== null) {
+      tickCountdown();
+    }
   }
 
   function startVibrating() {
@@ -370,36 +378,38 @@
     navigator.vibrate(0);
   }
 
+  function tickCountdown() {
+    secondsLeft = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    timerDisplay.textContent = formatTime(secondsLeft);
+    timerBar.style.width = `${(secondsLeft / REST_SECONDS) * 100}%`;
+
+    if (secondsLeft <= 0) {
+      stopTimer();
+      timerDisplay.textContent = '0:00';
+      timerBar.style.width = '0%';
+      document.body.classList.add('inverted');
+      const cur  = parseInt(remainingInput.value, 10);
+      const sets = parseInt(setsInput.value, 10);
+      if (cur < sets) {
+        btnResume.disabled = false;
+        if ('vibrate' in navigator) {
+          startVibrating();
+        }
+      }
+    }
+  }
+
   function startCountdown() {
     stopTimer();
     secondsLeft = REST_SECONDS;
+    deadline = Date.now() + REST_SECONDS * 1000;
 
     timerDisplay.classList.add('active');
     timerDisplay.textContent = formatTime(secondsLeft);
     timerBar.style.width = '100%';
 
-    function tickCountdown() {
-      secondsLeft--;
-      timerDisplay.textContent = formatTime(secondsLeft);
-      timerBar.style.width = `${(secondsLeft / REST_SECONDS) * 100}%`;
-
-      if (secondsLeft <= 0) {
-        stopTimer();
-        timerDisplay.textContent = '0:00';
-        timerBar.style.width = '0%';
-        document.body.classList.add('inverted');
-        const cur  = parseInt(remainingInput.value, 10);
-        const sets = parseInt(setsInput.value, 10);
-        if (cur < sets) {
-          btnResume.disabled = false;
-          if ('vibrate' in navigator) {
-            startVibrating();
-          }
-        }
-      }
-    }
-
     timerInterval = setInterval(tickCountdown, 1000);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
   }
 
   function handleResumeClick() {
