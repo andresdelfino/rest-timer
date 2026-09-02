@@ -1,0 +1,18 @@
+# Android Studio / IntelliJ
+*.iml
+.idea/
+.cxx/
+
+# Gradle
+.gradle/
+build/
+
+# Machine-specific: points at wherever the Android SDK is installed
+local.properties
+
+# Build outputs and signing material
+*.apk
+*.aab
+*.keystore
+*.jks
+captures/

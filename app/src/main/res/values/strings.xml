@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Rest Timer</string>
+
+    <string name="label_sets">Sets</string>
+    <string name="label_reps">Reps</string>
+    <string name="label_current_set">Current set</string>
+    <string name="label_rest_countdown">Rest countdown</string>
+
+    <string name="action_rest">Rest</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_start_again">Start again</string>
+
+    <string name="cd_increment">Increase %1$s</string>
+    <string name="cd_decrement">Decrease %1$s</string>
+
+    <string name="channel_countdown_name">Rest countdown</string>
+    <string name="channel_countdown_description">Shows the running rest countdown.</string>
+    <string name="channel_alert_name">Rest over</string>
+    <string name="channel_alert_description">Alerts you when the rest interval has elapsed.</string>
+
+    <string name="notification_resting_title">Resting</string>
+    <string name="notification_resting_text">Set %1$d of %2$d</string>
+    <string name="notification_elapsed_title">Rest over</string>
+    <string name="notification_elapsed_text">Start set %1$d of %2$d</string>
+    <string name="notification_done_text">Workout complete</string>
+</resources>
