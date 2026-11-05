@@ -1,18 +1,41 @@
-# Android Studio / IntelliJ
-*.iml
-.idea/
-.cxx/
-
-# Gradle
+# Gradle: caches, configuration cache, and every module's outputs (APKs, bundles,
+# R8 mappings, lint and test reports)
 .gradle/
 build/
+
+# Kotlin Gradle plugin: compiler daemon sessions and error logs
+.kotlin/
+
+# Native (NDK/CMake) builds
+.cxx/
+.externalNativeBuild/
+
+# Packages built outside build/, such as Android Studio's "Generate Signed App Bundle
+# or APK", which writes app/<build type>/ (anchored so src/<build type>/ source sets
+# stay tracked)
+/app/debug/
+/app/release/
+*.apk
+*.aab
+*.apks
+*.ap_
+
+# Android Studio profiler captures and heap dumps
+captures/
+*.hprof
+
+# JVM crash logs from the Gradle and Kotlin daemons
+hs_err_pid*.log
+replay_pid*.log
 
 # Machine-specific: points at wherever the Android SDK is installed
 local.properties
 
-# Build outputs and signing material
-*.apk
-*.aab
-*.keystore
+# Signing material
 *.jks
-captures/
+*.keystore
+
+# IDE and OS files
+.idea/
+*.iml
+.DS_Store

@@ -1,10 +1,10 @@
 [versions]
-agp = "9.4.0"
-kotlin = "2.2.10"  # the Kotlin AGP 9.4 brings in itself
-coreKtx = "1.19.0"
+agp = "9.5.0"
+kotlin = "2.4.21"
+coreKtx = "1.19.1"
 lifecycle = "2.11.0"
 activityCompose = "1.13.0"
-composeBom = "2026.08.00"
+composeBom = "2026.09.00"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -19,4 +19,5 @@ androidx-compose-foundation = { group = "androidx.compose.foundation", name = "f
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
