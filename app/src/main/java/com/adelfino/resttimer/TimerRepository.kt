@@ -50,7 +50,7 @@ class TimerRepository private constructor(context: Context) {
         return when {
             overdueBy < 0L -> Phase.RESTING
             // Elapsed while the app was gone, and recently enough that the user is still resting.
-            overdueBy <= STALE_ALERT_MILLIS -> Phase.ELAPSED
+            overdueBy <= ALERT_TIMEOUT_MILLIS -> Phase.ELAPSED
             else -> Phase.IDLE
         }
     }
@@ -73,19 +73,18 @@ class TimerRepository private constructor(context: Context) {
     /** The wall-clock moment this boot started, which is stable for as long as the boot lasts. */
     private fun bootInstant(): Long = System.currentTimeMillis() - SystemClock.elapsedRealtime()
 
-    fun setSets(value: Int) = update {
-        val sets = value.coerceIn(it.setsRange)
-        it.copy(sets = sets, currentSet = it.currentSet.coerceAtMost(sets))
-    }
+    // The sets range starts at the current set, so the current set never has to follow it down.
+    fun setSets(value: Int) = update { it.copy(sets = value.coerceIn(it.setsRange)) }
 
     fun setReps(value: Int) = update { it.copy(reps = value.coerceIn(it.repsRange)) }
 
     fun setCurrentSet(value: Int) = update {
-        if (it.phase != Phase.IDLE) it else it.copy(currentSet = value.coerceIn(it.currentSetRange))
+        val range = it.currentSetRange
+        if (range.isEmpty()) it else it.copy(currentSet = value.coerceIn(range))
     }
 
-    /** @return the deadline of the started rest, or `null` if no rest could start. */
-    fun startRest(): Long? {
+    /** @return `true` if a rest started. */
+    fun startRest(): Boolean {
         val deadline = SystemClock.elapsedRealtime() + REST_SECONDS * 1000L
         var started = false
         update {
@@ -93,28 +92,15 @@ class TimerRepository private constructor(context: Context) {
             started = true
             it.copy(phase = Phase.RESTING, deadlineRealtime = deadline)
         }
-        return deadline.takeIf { started }
+        return started
     }
 
-    /** @return `true` if this call is the one that ended the countdown. */
-    fun elapse(): Boolean {
-        var elapsed = false
-        update {
-            if (it.phase != Phase.RESTING) return@update it
-            elapsed = true
-            it.copy(phase = Phase.ELAPSED)
-        }
-        return elapsed
-    }
+    fun elapse() = update { if (it.phase != Phase.RESTING) it else it.copy(phase = Phase.ELAPSED) }
 
     /** Acknowledges the alert and advances to the next set. */
     fun resume() = update {
-        if (it.phase != Phase.ELAPSED) return@update it
-        it.copy(
-            phase = Phase.IDLE,
-            deadlineRealtime = 0L,
-            currentSet = (it.currentSet + 1).coerceAtMost(it.sets),
-        )
+        if (!it.canResume) return@update it
+        it.copy(phase = Phase.IDLE, deadlineRealtime = 0L, currentSet = it.nextSet)
     }
 
     /** Abandons a rest or an alert without advancing the set counter. */
@@ -141,9 +127,6 @@ class TimerRepository private constructor(context: Context) {
 
         /** Slack for the wall clock being nudged by a time sync part-way through a rest. */
         private const val BOOT_INSTANT_TOLERANCE_MILLIS = 60_000L
-
-        /** How long after a missed deadline it is still worth alerting rather than giving up. */
-        private const val STALE_ALERT_MILLIS = 5 * 60 * 1000L
 
         @Volatile
         private var instance: TimerRepository? = null

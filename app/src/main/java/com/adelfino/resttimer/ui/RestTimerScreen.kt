@@ -1,5 +1,6 @@
 package com.adelfino.resttimer.ui
 
+import android.os.SystemClock
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -28,7 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -45,7 +47,6 @@ import com.adelfino.resttimer.ui.theme.RestTimerTheme
 import com.adelfino.resttimer.ui.theme.StepperSymbolStyle
 import com.adelfino.resttimer.ui.theme.ValueStyle
 import kotlinx.coroutines.delay
-import kotlin.math.ceil
 
 private val FieldShape = RoundedCornerShape(4.dp)
 private val ValueShape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
@@ -65,7 +66,6 @@ fun RestTimerScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalRestColors.current
-    val secondsLeft = countdownSeconds(state)
 
     Column(
         modifier
@@ -102,7 +102,7 @@ fun RestTimerScreen(
 
         Spacer(Modifier.weight(1f))
 
-        TimerSection(secondsLeft = secondsLeft, running = state.phase != Phase.IDLE)
+        TimerSection(state)
 
         Spacer(Modifier.weight(1f))
 
@@ -139,16 +139,11 @@ fun RestTimerScreen(
 @Composable
 private fun countdownSeconds(state: TimerState): Int {
     val seconds by produceState(state.remainingSeconds(), state.phase, state.deadlineRealtime) {
-        if (state.phase != Phase.RESTING) {
-            value = state.remainingSeconds()
-            return@produceState
-        }
         while (true) {
-            val remainingMillis = state.remainingMillis()
-            val remainingSeconds = ceil(remainingMillis / 1000.0).toInt()
-            value = remainingSeconds
-            if (remainingSeconds <= 0) break
-            delay(remainingMillis - (remainingSeconds - 1) * 1000L)
+            val now = SystemClock.elapsedRealtime()
+            value = state.remainingSeconds(now)
+            if (state.phase != Phase.RESTING || value <= 0) break
+            delay(state.remainingMillis(now) - (value - 1) * 1000L)
         }
     }
     return seconds
@@ -198,20 +193,18 @@ private fun StepperField(
                     .background(colors.border)
                     .padding(top = 1.dp, end = 1.dp, bottom = 1.dp),
             ) {
-                // An empty range is how a field says it is not editable at all right now, so
-                // neither button may read as live off the endpoints of a range that has none.
                 StepperButton(
                     symbol = "+",
                     label = stringResource(R.string.cd_increment, label),
-                    enabled = !range.isEmpty() && value < range.last,
+                    enabled = value + 1 in range,
                     onClick = { onValueChange(value + 1) },
                     modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.fillMaxWidth().height(1.dp).background(colors.border))
+                Hairline()
                 StepperButton(
                     symbol = "−",
                     label = stringResource(R.string.cd_decrement, label),
-                    enabled = !range.isEmpty() && value > range.first,
+                    enabled = value - 1 in range,
                     onClick = { onValueChange(value - 1) },
                     modifier = Modifier.weight(1f),
                 )
@@ -249,14 +242,17 @@ private fun StepperButton(
 }
 
 @Composable
-private fun TimerSection(secondsLeft: Int, running: Boolean, modifier: Modifier = Modifier) {
+private fun TimerSection(state: TimerState, modifier: Modifier = Modifier) {
     val colors = LocalRestColors.current
+    val secondsLeft = countdownSeconds(state)
+    val running = state.phase != Phase.IDLE
     val fraction = if (running) secondsLeft / REST_SECONDS.toFloat() else 0f
-    // The bar slides between whole seconds at exactly the rate the countdown falls.
+    // The bar slides between whole seconds at exactly the rate the countdown falls. It is only
+    // read while drawing, so the slide redraws the bar without recomposing the section.
     val width by animateFloatAsState(fraction, tween(1000, easing = LinearEasing), label = "bar")
 
     Column(modifier.fillMaxWidth()) {
-        Spacer(Modifier.fillMaxWidth().height(1.dp).background(colors.border))
+        Hairline()
         Column(
             Modifier.fillMaxWidth().padding(top = 28.dp, bottom = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -277,15 +273,12 @@ private fun TimerSection(secondsLeft: Int, running: Boolean, modifier: Modifier 
                     .fillMaxWidth()
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(colors.border),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth(width.coerceIn(0f, 1f))
-                        .fillMaxHeight()
-                        .background(colors.accent),
-                )
-            }
+                    .background(colors.border)
+                    .drawBehind {
+                        val filled = size.width * width.coerceIn(0f, 1f)
+                        drawRect(colors.accent, size = size.copy(width = filled))
+                    },
+            )
         }
     }
 }
@@ -305,7 +298,10 @@ private fun ActionButton(
 
     Box(
         modifier
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .alpha(if (enabled) 1f else DISABLED_ALPHA)
             .clip(FieldShape)
             .background(outline)
@@ -317,6 +313,12 @@ private fun ActionButton(
     ) {
         Text(text = text.uppercase(), style = ButtonStyle, color = outline)
     }
+}
+
+/** The 1dp rule that separates parts of the screen. */
+@Composable
+private fun Hairline() {
+    Spacer(Modifier.fillMaxWidth().height(1.dp).background(LocalRestColors.current.border))
 }
 
 @Preview(name = "Idle", widthDp = 400, heightDp = 880)

@@ -3,42 +3,43 @@ package com.adelfino.resttimer
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import androidx.annotation.StringRes
 
 class RestTimerApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val manager = getSystemService(NotificationManager::class.java)
-
-        // Silent and unobtrusive: the countdown is glanceable, not something to interrupt for.
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_COUNTDOWN,
-                getString(R.string.channel_countdown_name),
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = getString(R.string.channel_countdown_description)
-                setShowBadge(false)
-                enableVibration(false)
-                setSound(null, null)
-            },
+        getSystemService(NotificationManager::class.java).createNotificationChannels(
+            listOf(
+                // Low importance: the countdown is glanceable, not something to interrupt for.
+                channel(
+                    CHANNEL_COUNTDOWN,
+                    R.string.channel_countdown_name,
+                    R.string.channel_countdown_description,
+                    NotificationManager.IMPORTANCE_LOW,
+                ),
+                // High importance so it can take over the lock screen.
+                channel(
+                    CHANNEL_ALERT,
+                    R.string.channel_alert_name,
+                    R.string.channel_alert_description,
+                    NotificationManager.IMPORTANCE_HIGH,
+                ),
+            ),
         )
+    }
 
-        // High importance so it can take over the lock screen. The vibration is driven by the
-        // service itself, so the channel keeps its own alerting off.
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ALERT,
-                getString(R.string.channel_alert_name),
-                NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                description = getString(R.string.channel_alert_description)
-                setShowBadge(false)
-                enableVibration(false)
-                setSound(null, null)
-                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
-            },
-        )
+    /** Both channels are silent: the vibration is driven by the service itself. */
+    private fun channel(
+        id: String,
+        @StringRes name: Int,
+        @StringRes description: Int,
+        importance: Int,
+    ) = NotificationChannel(id, getString(name), importance).apply {
+        this.description = getString(description)
+        setShowBadge(false)
+        enableVibration(false)
+        setSound(null, null)
     }
 
     companion object {

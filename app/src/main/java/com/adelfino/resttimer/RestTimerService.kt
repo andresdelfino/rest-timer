@@ -22,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
 
 /**
@@ -43,10 +44,24 @@ class RestTimerService : Service() {
     private val notificationManager by lazy { getSystemService(NotificationManager::class.java) }
     private val vibrator by lazy { getSystemService(VibratorManager::class.java).defaultVibrator }
 
+    private val openActivityIntent by lazy {
+        PendingIntent.getActivity(
+            this,
+            REQUEST_OPEN,
+            Intent(this, MainActivity::class.java)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+    private val resumeIntent by lazy { servicePendingIntent(ACTION_RESUME, REQUEST_RESUME) }
+    private val cancelIntent by lazy { servicePendingIntent(ACTION_CANCEL, REQUEST_CANCEL) }
+    private val elapsedAlarm by lazy { alarmOperation(ACTION_ELAPSED) }
+    private val timeoutAlarm by lazy { alarmOperation(ACTION_CANCEL) }
+
     private var countdownJob: Job? = null
 
     /** Tracks the foreground notification so a start command never posts a stray second one. */
-    private var foregroundId: Int? = null
+    private var inForeground = false
 
     /** Guards the alert against being started twice by two arrivals of the same deadline. */
     private var alerting = false
@@ -55,18 +70,19 @@ class RestTimerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        // Keep the notification honest when the set or rep counts change mid-rest.
+        // Keep the notification honest when the set count changes mid-rest. Reps are not shown in
+        // it, so a rep change alone is not worth reposting it.
         scope.launch {
-            repository.state.collect { state ->
-                if (state.phase != Phase.IDLE) notify(state)
-            }
+            repository.state
+                .distinctUntilChangedBy { it.copy(reps = 0) }
+                .collect { state -> if (state.phase != Phase.IDLE) notify(state) }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Every route in reaches us through startForegroundService(), which must be answered with a
         // notification before the service does anything else - including stopping.
-        if (foregroundId == null) {
+        if (!inForeground) {
             val state = repository.state.value
             enterForeground(notificationId(state), buildNotification(state))
         }
@@ -84,11 +100,7 @@ class RestTimerService : Service() {
     }
 
     private fun startRest() {
-        if (repository.startRest() == null) {
-            finish(repository::cancelRest)
-            return
-        }
-        armCountdown()
+        if (repository.startRest()) armCountdown() else finish(repository::cancelRest)
     }
 
     /**
@@ -104,7 +116,7 @@ class RestTimerService : Service() {
     private fun armCountdown() {
         val state = repository.state.value
         enterForeground(NOTIFICATION_COUNTDOWN, buildNotification(state))
-        scheduleAlarm(RestAlarmReceiver.ACTION_ELAPSED, state.deadlineRealtime)
+        scheduleAlarm(elapsedAlarm, state.deadlineRealtime)
 
         countdownJob?.cancel()
         countdownJob = scope.launch {
@@ -113,18 +125,22 @@ class RestTimerService : Service() {
         }
     }
 
+    private fun disarmCountdown() {
+        countdownJob?.cancel()
+        countdownJob = null
+        alarmManager.cancel(elapsedAlarm)
+    }
+
     private fun elapse() {
         if (alerting) return
-        if (repository.state.value.phase == Phase.RESTING) repository.elapse()
+        repository.elapse()
         if (repository.state.value.phase != Phase.ELAPSED) {
             // Nothing was resting: a stale alarm, or a rest too old to be worth alerting about.
             finish(repository::cancelRest)
             return
         }
         alerting = true
-        countdownJob?.cancel()
-        countdownJob = null
-        cancelAlarm(RestAlarmReceiver.ACTION_ELAPSED)
+        disarmCountdown()
 
         // The alert has to live on the high-importance channel to reach the lock screen, and a
         // notification cannot change channel in place, so the foreground notification moves to a
@@ -134,22 +150,17 @@ class RestTimerService : Service() {
 
         startVibrating()
         // Nobody should come back to a phone that has been buzzing since they left the gym.
-        scheduleAlarm(
-            RestAlarmReceiver.ACTION_ALERT_TIMEOUT,
-            SystemClock.elapsedRealtime() + ALERT_TIMEOUT_MILLIS,
-        )
+        scheduleAlarm(timeoutAlarm, SystemClock.elapsedRealtime() + ALERT_TIMEOUT_MILLIS)
     }
 
     private fun finish(apply: () -> Unit) {
         apply()
-        countdownJob?.cancel()
-        countdownJob = null
-        cancelAlarm(RestAlarmReceiver.ACTION_ELAPSED)
-        cancelAlarm(RestAlarmReceiver.ACTION_ALERT_TIMEOUT)
+        disarmCountdown()
+        alarmManager.cancel(timeoutAlarm)
         stopVibrating()
         alerting = false
         stopForeground(STOP_FOREGROUND_REMOVE)
-        foregroundId = null
+        inForeground = false
         notificationManager.cancel(NOTIFICATION_COUNTDOWN)
         notificationManager.cancel(NOTIFICATION_ALERT)
         stopSelf()
@@ -157,7 +168,7 @@ class RestTimerService : Service() {
 
     private fun enterForeground(id: Int, notification: Notification) {
         startForeground(id, notification)
-        foregroundId = id
+        inForeground = true
     }
 
     override fun onDestroy() {
@@ -198,8 +209,7 @@ class RestTimerService : Service() {
     // The exact-alarm branch is guarded by canScheduleExactAlarms() on the line above it, which
     // is the check lint is asking for; it just cannot see through the receiver.
     @SuppressLint("MissingPermission")
-    private fun scheduleAlarm(action: String, triggerRealtime: Long) {
-        val operation = alarmOperation(action)
+    private fun scheduleAlarm(operation: PendingIntent, triggerRealtime: Long) {
         if (alarmManager.canScheduleExactAlarms()) {
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.ELAPSED_REALTIME_WAKEUP,
@@ -217,8 +227,7 @@ class RestTimerService : Service() {
         }
     }
 
-    private fun cancelAlarm(action: String) = alarmManager.cancel(alarmOperation(action))
-
+    /** Fires [RestAlarmReceiver], which hands [action] on to this service. */
     private fun alarmOperation(action: String): PendingIntent = PendingIntent.getBroadcast(
         this,
         0,
@@ -236,7 +245,6 @@ class RestTimerService : Service() {
 
     private fun buildNotification(state: TimerState): Notification {
         val alerting = state.phase == Phase.ELAPSED
-        val nextSet = (state.currentSet + 1).coerceAtMost(state.sets)
 
         val builder = NotificationCompat.Builder(
             this,
@@ -244,29 +252,24 @@ class RestTimerService : Service() {
         )
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(getColor(R.color.accent))
-            .setContentIntent(activityIntent())
+            .setContentIntent(openActivityIntent)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
-            .setShowWhen(false)
 
         return if (alerting) {
             builder
                 .setContentTitle(getString(R.string.notification_elapsed_title))
                 .setContentText(
-                    if (state.currentSet < state.sets) {
-                        getString(R.string.notification_elapsed_text, nextSet, state.sets)
+                    if (state.hasNextSet) {
+                        getString(R.string.notification_elapsed_text, state.nextSet, state.sets)
                     } else {
                         getString(R.string.notification_done_text)
                     },
                 )
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setFullScreenIntent(activityIntent(), true)
-                .addAction(
-                    0,
-                    getString(R.string.action_resume),
-                    servicePendingIntent(ACTION_RESUME, REQUEST_RESUME),
-                )
+                .setShowWhen(false)
+                .setFullScreenIntent(openActivityIntent, true)
+                .addAction(0, getString(R.string.action_resume), resumeIntent)
                 .build()
         } else {
             builder
@@ -274,34 +277,20 @@ class RestTimerService : Service() {
                 .setContentText(
                     getString(R.string.notification_resting_text, state.currentSet, state.sets),
                 )
-                .setPriority(NotificationCompat.PRIORITY_LOW)
                 // The platform ticks this down itself, so the service never wakes to redraw it.
                 .setUsesChronometer(true)
                 .setChronometerCountDown(true)
                 .setWhen(System.currentTimeMillis() + state.remainingMillis())
-                .setShowWhen(true)
-                .addAction(
-                    0,
-                    getString(R.string.action_cancel),
-                    servicePendingIntent(ACTION_CANCEL, REQUEST_CANCEL),
-                )
+                .addAction(0, getString(R.string.action_cancel), cancelIntent)
                 .build()
         }
     }
-
-    private fun activityIntent(): PendingIntent = PendingIntent.getActivity(
-        this,
-        REQUEST_OPEN,
-        Intent(this, MainActivity::class.java)
-            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-    )
 
     private fun servicePendingIntent(action: String, requestCode: Int): PendingIntent =
         PendingIntent.getForegroundService(
             this,
             requestCode,
-            Intent(this, RestTimerService::class.java).setAction(action),
+            intent(this, action),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -320,19 +309,19 @@ class RestTimerService : Service() {
         private const val REQUEST_RESUME = 1
         private const val REQUEST_CANCEL = 2
 
-        private const val ALERT_TIMEOUT_MILLIS = 5 * 60 * 1000L
-
         /** Leading 0 is the delay before the first buzz; the trailing 1000 is the gap before repeating. */
         private val VIBRATION_PATTERN = longArrayOf(0, 400, 200, 400, 1000)
         private const val VIBRATION_REPEAT_INDEX = 0
 
+        private fun intent(context: Context, action: String): Intent =
+            Intent(context, RestTimerService::class.java).setAction(action)
+
+        /**
+         * Always a foreground start: it is legal whether or not the service is already running,
+         * and [onStartCommand] answers it with a notification either way.
+         */
         fun send(context: Context, action: String) {
-            val intent = Intent(context, RestTimerService::class.java).setAction(action)
-            when (action) {
-                // These two may find no service running at all.
-                ACTION_START, ACTION_RESYNC -> context.startForegroundService(intent)
-                else -> context.startService(intent)
-            }
+            context.startForegroundService(intent(context, action))
         }
     }
 }

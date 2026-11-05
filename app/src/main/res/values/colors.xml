@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- The XML side of DarkColors in ui/theme/Color.kt: window, launcher icon, notification. -->
     <color name="bg">#0A0A0A</color>
     <color name="accent">#C8F135</color>
 </resources>

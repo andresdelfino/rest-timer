@@ -1,12 +1,14 @@
 package com.adelfino.resttimer.ui.theme
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 val LocalRestColors: ProvidableCompositionLocal<RestColors> = staticCompositionLocalOf { DarkColors }
 
@@ -16,20 +18,19 @@ val LocalRestColors: ProvidableCompositionLocal<RestColors> = staticCompositionL
  */
 @Composable
 fun RestTimerTheme(alerting: Boolean, content: @Composable () -> Unit) {
-    val target = if (alerting) AlertColors else DarkColors
+    val flip by animateFloatAsState(if (alerting) 1f else 0f, tween(FLIP_MILLIS), label = "flip")
 
-    @Composable
-    fun cross(color: Color) = animateColorAsState(color, tween(FLIP_MILLIS), label = "color").value
+    fun cross(color: RestColors.() -> Color) = lerp(DarkColors.color(), AlertColors.color(), flip)
 
     val colors = RestColors(
-        background = cross(target.background),
-        surface = cross(target.surface),
-        border = cross(target.border),
-        accent = cross(target.accent),
-        accentDim = cross(target.accentDim),
-        text = cross(target.text),
-        muted = cross(target.muted),
-        readOnlyBackground = cross(target.readOnlyBackground),
+        background = cross { background },
+        surface = cross { surface },
+        border = cross { border },
+        accent = cross { accent },
+        accentDim = cross { accentDim },
+        text = cross { text },
+        muted = cross { muted },
+        readOnlyBackground = cross { readOnlyBackground },
     )
 
     CompositionLocalProvider(LocalRestColors provides colors, content = content)

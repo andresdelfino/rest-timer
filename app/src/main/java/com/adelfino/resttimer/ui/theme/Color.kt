@@ -19,6 +19,7 @@ data class RestColors(
     val readOnlyBackground: Color,
 )
 
+/** Its background and accent are mirrored in res/values/colors.xml for the non-Compose surfaces. */
 val DarkColors = RestColors(
     background = Color(0xFF0A0A0A),
     surface = Color(0xFF111111),

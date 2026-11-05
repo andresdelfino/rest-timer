@@ -6,6 +6,12 @@ import kotlin.math.ceil
 /** Length of a rest interval. The one knob the original page exposed by editing its source. */
 const val REST_SECONDS = 120
 
+/**
+ * How long an elapsed rest is worth alerting about: both how long the alert runs before giving up,
+ * and how late a rest restored after process death may be and still raise one.
+ */
+const val ALERT_TIMEOUT_MILLIS = 5 * 60 * 1000L
+
 const val MIN_COUNT = 1
 const val MAX_COUNT = 99
 
@@ -35,8 +41,13 @@ data class TimerState(
      */
     val deadlineRealtime: Long = 0L,
 ) {
+    val hasNextSet: Boolean get() = currentSet < sets
+
+    /** Where resuming lands. Capped, since the set count may have been lowered mid-rest. */
+    val nextSet: Int get() = (currentSet + 1).coerceAtMost(sets)
+
     /** There is no rest to take after the final set, so resting ends on the second-to-last one. */
-    val canRest: Boolean get() = phase == Phase.IDLE && currentSet < sets
+    val canRest: Boolean get() = phase == Phase.IDLE && hasNextSet
 
     /** Always available while alerting: it is also how the user silences the vibration. */
     val canResume: Boolean get() = phase == Phase.ELAPSED
