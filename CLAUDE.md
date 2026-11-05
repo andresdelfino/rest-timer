@@ -6,7 +6,8 @@ The constraints, toolchain and commands shared with the other Kotlin projects ar
 
 ## Constraints
 
-- The UI uses Compose Foundation only, with no Material dependency. `ui/Components.kt` provides a hand-rolled `Text` (on `BasicText`) and `Modifier.pressable` (no ripple). Build new controls from these instead of pulling in Material.
+- The UI is Material 3 (`androidx.compose.material3`, version from the Compose BOM), coloured by the dynamic (wallpaper) scheme with no brand fallback, since `minSdk` 31 always has it. Use M3 components and the default type scale rather than hand-rolled controls or bundled fonts. Icons are Material Symbols vector drawables in `res/drawable` (`ic_add`, `ic_remove`), not the `material-icons` libraries.
+- The brand lime (`@color/accent`) survives only outside the app: the launcher icon and the notification colour.
 
 ## Commands
 
@@ -18,7 +19,7 @@ There are no tests yet: no `test`/`androidTest` source sets and no test dependen
 
 ## Architecture
 
-This is a single-module app (`:app`, package `com.adelfino.resttimer`). It is a native port of `rest-timer.html`, the original single-file web app, which stays in the repo as the reference for behaviour and visuals (palette, fonts, the `120`-second rest, the `[400, 200, 400]` vibration). Comments in the Kotlin code refer back to it.
+This is a single-module app (`:app`, package `com.adelfino.resttimer`). It is a native port of `rest-timer.html`, the original single-file web app, which stays in the repo as the reference for behaviour (the `120`-second rest, the `[400, 200, 400]` vibration). The visuals have since moved to Material 3 and no longer follow it. Comments in the Kotlin code refer back to it.
 
 **State.** `TimerRepository` is a process-wide singleton (`TimerRepository.get(context)`) and the single source of truth. It exposes `StateFlow<TimerState>`, and every change is written to SharedPreferences through its private `update {}`, including a rest that is still running. `TimerState` is a plain data class: phase `IDLE → RESTING → ELAPSED`, plus derived rules (`canRest`, `canResume`, the editable ranges) that both the UI and the repository use to enforce valid transitions.
 
@@ -40,4 +41,4 @@ This is a single-module app (`:app`, package `com.adelfino.resttimer`). It is a 
 
 **Process-death recovery.** If the restored phase isn't `IDLE`, `MainActivity` sends `ACTION_RESYNC` to rebuild the notification, alarm and alert. A pending alarm reaches the service on its own anyway.
 
-**UI.** `MainActivity` hosts `ui/RestTimerScreen`. While the phase is `ELAPSED` it calls `setShowWhenLocked`/`setTurnScreenOn` so that the full-screen intent can wake the screen and appear over the keyguard. Meanwhile `RestTimerTheme(alerting)` animates the colours from `DarkColors` to `AlertColors` (provided through `LocalRestColors`), standing in for the web app's CSS inversion.
+**UI.** `MainActivity` hosts `ui/RestTimerScreen`. While the phase is `ELAPSED` it calls `setShowWhenLocked`/`setTurnScreenOn` so that the full-screen intent can wake the screen and appear over the keyguard. Meanwhile `RestTimerTheme(alerting, darkTheme)` switches the dynamic colour scheme instantly to its opposite brightness (dark to light, or light to dark), standing in for the web app's CSS inversion. `MainActivity` sets the system-bar icon appearance to match whichever scheme is showing.

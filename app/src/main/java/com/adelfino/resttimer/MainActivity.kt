@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
@@ -37,19 +38,25 @@ class MainActivity : ComponentActivity() {
         setContent {
             val state by repository.state.collectAsStateWithLifecycle()
             val alerting = state.phase == Phase.ELAPSED
+            val darkTheme = isSystemInDarkTheme()
+            // The alert flips the scheme to its opposite brightness.
+            val lightScheme = darkTheme == alerting
 
             LaunchedEffect(alerting) {
                 // While alerting, the activity is what the full-screen intent brings up, so it has
                 // to be allowed over the keyguard and to light the screen by itself.
                 setShowWhenLocked(alerting)
                 setTurnScreenOn(alerting)
+            }
+
+            LaunchedEffect(lightScheme) {
                 WindowCompat.getInsetsController(window, window.decorView).apply {
-                    isAppearanceLightStatusBars = alerting
-                    isAppearanceLightNavigationBars = alerting
+                    isAppearanceLightStatusBars = lightScheme
+                    isAppearanceLightNavigationBars = lightScheme
                 }
             }
 
-            RestTimerTheme(alerting = alerting) {
+            RestTimerTheme(alerting = alerting, darkTheme = darkTheme) {
                 RestTimerScreen(
                     state = state,
                     onSetsChange = repository::setSets,
