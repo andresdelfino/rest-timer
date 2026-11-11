@@ -2,20 +2,21 @@ package com.adelfino.resttimer
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.adelfino.resttimer.ui.RestTimerScreen
 import com.adelfino.resttimer.ui.theme.RestTimerTheme
+import com.adelfino.resttimer.ui.theme.isDarkScheme
 
 class MainActivity : ComponentActivity() {
 
@@ -24,10 +25,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        askForNotificationPermission()
-
         val repository = TimerRepository.get(this)
+
+        // The bar icons follow the scheme's brightness, which the alert flips. They are handed over
+        // as a rule rather than set once because enableEdgeToEdge re-applies its style on every
+        // configuration change this activity handles itself (rotation, for one), which would
+        // otherwise undo the flip.
+        val systemBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { resources ->
+            isDarkScheme(
+                systemDark = resources.configuration.isNightModeActive,
+                alerting = repository.state.value.phase == Phase.ELAPSED,
+            )
+        }
+        enableEdgeToEdge(systemBarStyle, systemBarStyle)
+        askForNotificationPermission()
 
         // A rest may have been restored from a process that did not survive it. Hand it back to the
         // service, which owns the notification, the alarm and the alert.
@@ -38,25 +49,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             val state by repository.state.collectAsStateWithLifecycle()
             val alerting = state.phase == Phase.ELAPSED
-            val darkTheme = isSystemInDarkTheme()
-            // The alert flips the scheme to its opposite brightness.
-            val lightScheme = darkTheme == alerting
 
             LaunchedEffect(alerting) {
                 // While alerting, the activity is what the full-screen intent brings up, so it has
                 // to be allowed over the keyguard and to light the screen by itself.
                 setShowWhenLocked(alerting)
                 setTurnScreenOn(alerting)
+                // Re-evaluates the bar rule above for the new phase.
+                enableEdgeToEdge(systemBarStyle, systemBarStyle)
             }
 
-            LaunchedEffect(lightScheme) {
-                WindowCompat.getInsetsController(window, window.decorView).apply {
-                    isAppearanceLightStatusBars = lightScheme
-                    isAppearanceLightNavigationBars = lightScheme
-                }
-            }
-
-            RestTimerTheme(alerting = alerting, darkTheme = darkTheme) {
+            RestTimerTheme(alerting = alerting) {
                 RestTimerScreen(
                     state = state,
                     onSetsChange = repository::setSets,

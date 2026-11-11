@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -210,7 +211,8 @@ private fun TimerSection(state: TimerState, modifier: Modifier = Modifier) {
     val running = state.phase != Phase.IDLE
     val fraction = if (running) secondsLeft / REST_SECONDS.toFloat() else 0f
     // The bar slides between whole seconds at exactly the rate the countdown falls. It is only
-    // read while drawing, so the slide redraws the bar without recomposing the section.
+    // read while drawing, so the slide redraws the bar without recomposing the section, and the
+    // bar's own layer keeps each frame's redraw to the bar instead of the whole screen.
     val progress by animateFloatAsState(fraction, tween(1000, easing = LinearEasing), label = "bar")
 
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -229,8 +231,8 @@ private fun TimerSection(state: TimerState, modifier: Modifier = Modifier) {
             },
         )
         LinearProgressIndicator(
-            progress = { progress.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(8.dp),
+            progress = { progress },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(8.dp).graphicsLayer(),
         )
     }
 }

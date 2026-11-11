@@ -8,20 +8,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 /**
+ * Whether the scheme is dark: as the system is set, until a rest elapses and flips it to its
+ * opposite brightness, the Material counterpart of the full-page inversion the web version applied
+ * on elapse. `MainActivity` applies the same rule to the system-bar icons.
+ */
+fun isDarkScheme(systemDark: Boolean, alerting: Boolean): Boolean = systemDark != alerting
+
+/**
  * Material 3 in the colour scheme the system derives from the wallpaper (always available, as the
- * app's minimum SDK is Android 12), light or dark as the system is set.
+ * app's minimum SDK is Android 12), dark or light as [isDarkScheme] decides.
  *
- * @param alerting whether a rest has elapsed. The scheme then flips to its opposite brightness, the
- *   Material counterpart of the full-page inversion the web version applied on elapse.
+ * @param alerting whether a rest has elapsed.
  */
 @Composable
-fun RestTimerTheme(
-    alerting: Boolean,
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
+fun RestTimerTheme(alerting: Boolean, content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val dark = darkTheme != alerting
+    val dark = isDarkScheme(isSystemInDarkTheme(), alerting)
 
     MaterialTheme(
         colorScheme = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context),
