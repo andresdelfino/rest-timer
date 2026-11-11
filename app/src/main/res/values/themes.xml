@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Only the window before Compose draws: painted close to the Compose surface so there is no
-         flash on cold start. -->
+    <!-- Only the window before Compose draws: painted the Compose surface's colour so there is no
+         flash on cold start, with bar icons that suit its brightness. -->
     <style name="Theme.RestTimer" parent="android:Theme.DeviceDefault.DayNight">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">@color/window_background</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">?android:attr/isLightTheme</item>
+        <item name="android:windowLightNavigationBar">?android:attr/isLightTheme</item>
     </style>
 </resources>

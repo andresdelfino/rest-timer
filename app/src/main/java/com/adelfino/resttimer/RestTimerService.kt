@@ -8,14 +8,12 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.VibratorManager
-import androidx.core.app.NotificationCompat
+import androidx.annotation.StringRes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -183,49 +181,24 @@ class RestTimerService : Service() {
      * The web app's `navigator.vibrate([400, 200, 400])` on a two second interval, expressed as one
      * repeating waveform so the system vibrator keeps time instead of a wakeful handler in-process.
      */
-    private fun startVibrating() {
-        val effect = VibrationEffect.createWaveform(VIBRATION_PATTERN, VIBRATION_REPEAT_INDEX)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            vibrator.vibrate(
-                effect,
-                VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM),
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(
-                effect,
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build(),
-            )
-        }
-    }
+    private fun startVibrating() = vibrator.vibrate(
+        VibrationEffect.createWaveform(VIBRATION_PATTERN, VIBRATION_REPEAT_INDEX),
+        VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM),
+    )
 
     private fun stopVibrating() = vibrator.cancel()
 
     // --- Alarms ----------------------------------------------------------------------------
 
-    // The exact-alarm branch is guarded by canScheduleExactAlarms() on the line above it, which
-    // is the check lint is asking for; it just cannot see through the receiver.
+    /** Always exact: USE_EXACT_ALARM is granted at install and the user can't revoke it. */
+    // Lint knows only SCHEDULE_EXACT_ALARM and can't tell that USE_EXACT_ALARM covers this call.
     @SuppressLint("MissingPermission")
-    private fun scheduleAlarm(operation: PendingIntent, triggerRealtime: Long) {
-        if (alarmManager.canScheduleExactAlarms()) {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                triggerRealtime,
-                operation,
-            )
-        } else {
-            // Without the exact-alarm grant the alert can be deferred in Doze. Still the best
-            // available: an inexact wakeup beats no wakeup at all.
-            alarmManager.setAndAllowWhileIdle(
-                AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                triggerRealtime,
-                operation,
-            )
-        }
-    }
+    private fun scheduleAlarm(operation: PendingIntent, triggerRealtime: Long) =
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            triggerRealtime,
+            operation,
+        )
 
     /** Fires [RestAlarmReceiver], which hands [action] on to this service. */
     private fun alarmOperation(action: String): PendingIntent = PendingIntent.getBroadcast(
@@ -246,15 +219,15 @@ class RestTimerService : Service() {
     private fun buildNotification(state: TimerState): Notification {
         val alerting = state.phase == Phase.ELAPSED
 
-        val builder = NotificationCompat.Builder(
+        val builder = Notification.Builder(
             this,
             if (alerting) RestTimerApplication.CHANNEL_ALERT else RestTimerApplication.CHANNEL_COUNTDOWN,
         )
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(getColor(R.color.accent))
             .setContentIntent(openActivityIntent)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(Notification.CATEGORY_ALARM)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(true)
 
         return if (alerting) {
@@ -269,7 +242,7 @@ class RestTimerService : Service() {
                 )
                 .setShowWhen(false)
                 .setFullScreenIntent(openActivityIntent, true)
-                .addAction(0, getString(R.string.action_resume), resumeIntent)
+                .addAction(action(R.string.action_resume, resumeIntent))
                 .build()
         } else {
             builder
@@ -281,10 +254,14 @@ class RestTimerService : Service() {
                 .setUsesChronometer(true)
                 .setChronometerCountDown(true)
                 .setWhen(System.currentTimeMillis() + state.remainingMillis())
-                .addAction(0, getString(R.string.action_cancel), cancelIntent)
+                .addAction(action(R.string.action_cancel, cancelIntent))
                 .build()
         }
     }
+
+    /** No icon: the system doesn't draw one on notification action buttons. */
+    private fun action(@StringRes title: Int, intent: PendingIntent): Notification.Action =
+        Notification.Action.Builder(null, getString(title), intent).build()
 
     private fun servicePendingIntent(action: String, requestCode: Int): PendingIntent =
         PendingIntent.getForegroundService(

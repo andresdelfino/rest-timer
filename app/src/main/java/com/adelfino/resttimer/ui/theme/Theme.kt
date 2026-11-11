@@ -15,8 +15,8 @@ import androidx.compose.ui.platform.LocalContext
 fun isDarkScheme(systemDark: Boolean, alerting: Boolean): Boolean = systemDark != alerting
 
 /**
- * Material 3 in the colour scheme the system derives from the wallpaper (always available, as the
- * app's minimum SDK is Android 12), dark or light as [isDarkScheme] decides.
+ * Material 3 in the colour scheme the system derives from the wallpaper (always available on
+ * Android 16), dark or light as [isDarkScheme] decides.
  *
  * @param alerting whether a rest has elapsed.
  */

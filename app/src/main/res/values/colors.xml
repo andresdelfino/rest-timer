@@ -5,7 +5,6 @@
     <color name="icon_background">#0A0A0A</color>
     <color name="accent">#C8F135</color>
 
-    <!-- Near the dynamic scheme's light surface (tone 98), so there is no flash on cold start.
-         Android 14 exposes that surface itself: see values-v34. -->
-    <color name="window_background">@android:color/system_neutral1_10</color>
+    <!-- The dynamic scheme's light surface, which Material 3 reads from this token. -->
+    <color name="window_background">@android:color/system_surface_light</color>
 </resources>

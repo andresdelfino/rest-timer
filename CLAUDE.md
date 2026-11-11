@@ -6,7 +6,8 @@ The constraints, toolchain and commands shared with the other Kotlin projects ar
 
 ## Constraints
 
-- The UI is Material 3 (`androidx.compose.material3`, version from the Compose BOM), coloured by the dynamic (wallpaper) scheme with no brand fallback, since `minSdk` 31 always has it. Use M3 components and the default type scale rather than hand-rolled controls or bundled fonts. Icons are Material Symbols vector drawables in `res/drawable` (`ic_add`, `ic_remove`), not the `material-icons` libraries.
+- Android 16 is the only supported version: `minSdk` and `targetSdk` are both 36. Call the platform API directly, with no `Build.VERSION` checks, `*Compat` wrappers (`NotificationCompat`, `ContextCompat`, `WindowCompat`), backports such as `enableEdgeToEdge`, versioned resource folders (`-v34`), or fallbacks for other releases.
+- The UI is Material 3 (`androidx.compose.material3`, version from the Compose BOM), coloured by the dynamic (wallpaper) scheme with no brand fallback, since Android 16 always has it. Use M3 components and the default type scale rather than hand-rolled controls or bundled fonts. Icons are Material Symbols vector drawables in `res/drawable` (`ic_add`, `ic_remove`), not the `material-icons` libraries.
 - The brand lime (`@color/accent`) survives only outside the app: the launcher icon and the notification colour.
 
 ## Commands
@@ -41,4 +42,4 @@ This is a single-module app (`:app`, package `com.adelfino.resttimer`). It is a 
 
 **Process-death recovery.** If the restored phase isn't `IDLE`, `MainActivity` sends `ACTION_RESYNC` to rebuild the notification, alarm and alert. A pending alarm reaches the service on its own anyway.
 
-**UI.** `MainActivity` hosts `ui/RestTimerScreen`. While the phase is `ELAPSED` it calls `setShowWhenLocked`/`setTurnScreenOn` so that the full-screen intent can wake the screen and appear over the keyguard. Meanwhile `RestTimerTheme(alerting)` switches the dynamic colour scheme instantly to its opposite brightness (dark to light, or light to dark), standing in for the web app's CSS inversion. That rule lives in `isDarkScheme` (`ui/theme/Theme.kt`). `MainActivity` also hands it to `enableEdgeToEdge` as the `SystemBarStyle`'s dark-mode check, so the system-bar icons match whichever scheme is showing. This holds even after a configuration change the activity handles itself, because `enableEdgeToEdge` re-applies its style when one happens.
+**UI.** `MainActivity` hosts `ui/RestTimerScreen`. While the phase is `ELAPSED` it calls `setShowWhenLocked`/`setTurnScreenOn` so that the full-screen intent can wake the screen and appear over the keyguard. Meanwhile `RestTimerTheme(alerting)` switches the dynamic colour scheme instantly to its opposite brightness (dark to light, or light to dark), standing in for the web app's CSS inversion. That rule lives in `isDarkScheme` (`ui/theme/Theme.kt`). The window theme starts the system-bar icons at the system's brightness (`?android:attr/isLightTheme`). `MainActivity` applies the same rule through `window.insetsController`, so the icons flip with the scheme. The app is edge-to-edge because Android 16 enforces it, not because of any call.

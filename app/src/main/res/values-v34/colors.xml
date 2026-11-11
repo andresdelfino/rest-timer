@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- The dynamic scheme's light surface itself: from API 34, Material 3 reads it from this token. -->
-    <color name="window_background">@android:color/system_surface_light</color>
-</resources>

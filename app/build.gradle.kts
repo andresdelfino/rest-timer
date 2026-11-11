@@ -12,8 +12,9 @@ android {
 
     defaultConfig {
         applicationId = "com.adelfino.resttimer"
-        minSdk = 31
-        targetSdk = 36 // Android 16
+        // Android 16 is the only version supported.
+        minSdk = 36
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
     }
