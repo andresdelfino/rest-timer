@@ -21,7 +21,10 @@
     <string name="channel_alert_description">Alerts you when the rest interval has elapsed.</string>
 
     <string name="notification_resting_title">Resting</string>
-    <string name="notification_resting_text">Set %1$d of %2$d</string>
+    <!-- Metric labels: the platform asks for 10 characters or fewer. -->
+    <string name="notification_metric_remaining">Remaining</string>
+    <string name="notification_metric_set">Set</string>
+    <string name="notification_metric_set_value">%1$d of %2$d</string>
     <string name="notification_elapsed_title">Rest over</string>
     <string name="notification_elapsed_text">Start set %1$d of %2$d</string>
     <string name="notification_done_text">Workout complete</string>

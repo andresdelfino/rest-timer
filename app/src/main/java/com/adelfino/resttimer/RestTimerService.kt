@@ -229,6 +229,7 @@ class RestTimerService : Service() {
             .setCategory(Notification.CATEGORY_ALARM)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(true)
+            .setShowWhen(false)
 
         return if (alerting) {
             builder
@@ -240,28 +241,57 @@ class RestTimerService : Service() {
                         getString(R.string.notification_done_text)
                     },
                 )
-                .setShowWhen(false)
                 .setFullScreenIntent(openActivityIntent, true)
                 .addAction(action(R.string.action_resume, resumeIntent))
                 .build()
         } else {
             builder
                 .setContentTitle(getString(R.string.notification_resting_title))
-                .setContentText(
-                    getString(R.string.notification_resting_text, state.currentSet, state.sets),
+                .setStyle(restingMetrics(state))
+                // A Live Update: pinned to the top of the shade and the lock screen, with the
+                // countdown in a status-bar chip. The user can turn this off per app, which leaves
+                // an ordinary notification.
+                .setRequestPromotedOngoing(true)
+                .addAction(
+                    action(R.string.action_cancel, cancelIntent, Notification.Action.SEMANTIC_ACTION_STOP),
                 )
-                // The platform ticks this down itself, so the service never wakes to redraw it.
-                .setUsesChronometer(true)
-                .setChronometerCountDown(true)
-                .setWhen(System.currentTimeMillis() + state.remainingMillis())
-                .addAction(action(R.string.action_cancel, cancelIntent))
                 .build()
         }
     }
 
+    /**
+     * The countdown and the set it leads to. The countdown comes first, which makes it the metric
+     * the status-bar chip shows. It counts down to the rest's own monotonic deadline, and the
+     * platform ticks it, so the service never wakes to redraw it.
+     */
+    private fun restingMetrics(state: TimerState) = Notification.MetricStyle()
+        .addMetric(
+            Notification.Metric(
+                Notification.Metric.TimeDifference.forTimer(
+                    state.deadlineRealtime,
+                    Notification.Metric.TimeDifference.FORMAT_CHRONOMETER,
+                ),
+                getString(R.string.notification_metric_remaining),
+            ),
+        )
+        .addMetric(
+            Notification.Metric(
+                Notification.Metric.FixedText(
+                    getString(R.string.notification_metric_set_value, state.currentSet, state.sets),
+                ),
+                getString(R.string.notification_metric_set),
+            ),
+        )
+
     /** No icon: the system doesn't draw one on notification action buttons. */
-    private fun action(@StringRes title: Int, intent: PendingIntent): Notification.Action =
-        Notification.Action.Builder(null, getString(title), intent).build()
+    private fun action(
+        @StringRes title: Int,
+        intent: PendingIntent,
+        semanticAction: Int = Notification.Action.SEMANTIC_ACTION_NONE,
+    ): Notification.Action =
+        Notification.Action.Builder(null, getString(title), intent)
+            .setSemanticAction(semanticAction)
+            .build()
 
     private fun servicePendingIntent(action: String, requestCode: Int): PendingIntent =
         PendingIntent.getForegroundService(

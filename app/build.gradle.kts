@@ -5,16 +5,13 @@ plugins {
 
 android {
     namespace = "com.adelfino.resttimer"
-
-    // Compiled against the newest SDK, as AndroidX requires, but targeting Android 16: the
-    // target is what decides the runtime behaviour the app opts in to.
     compileSdk = 37
 
     defaultConfig {
         applicationId = "com.adelfino.resttimer"
-        // Android 16 is the only version supported.
-        minSdk = 36
-        targetSdk = 36
+        // Android 17 is the only version supported.
+        minSdk = 37
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
     }

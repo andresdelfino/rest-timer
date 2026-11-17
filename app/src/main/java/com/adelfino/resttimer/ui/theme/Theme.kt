@@ -16,7 +16,7 @@ fun isDarkScheme(systemDark: Boolean, alerting: Boolean): Boolean = systemDark !
 
 /**
  * Material 3 in the colour scheme the system derives from the wallpaper (always available on
- * Android 16), dark or light as [isDarkScheme] decides.
+ * Android 17), dark or light as [isDarkScheme] decides.
  *
  * @param alerting whether a rest has elapsed.
  */

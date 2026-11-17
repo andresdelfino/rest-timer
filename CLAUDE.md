@@ -6,8 +6,8 @@ The constraints, toolchain and commands shared with the other Kotlin projects ar
 
 ## Constraints
 
-- Android 16 is the only supported version: `minSdk` and `targetSdk` are both 36. Call the platform API directly, with no `Build.VERSION` checks, `*Compat` wrappers (`NotificationCompat`, `ContextCompat`, `WindowCompat`), backports such as `enableEdgeToEdge`, versioned resource folders (`-v34`), or fallbacks for other releases.
-- The UI is Material 3 (`androidx.compose.material3`, version from the Compose BOM), coloured by the dynamic (wallpaper) scheme with no brand fallback, since Android 16 always has it. Use M3 components and the default type scale rather than hand-rolled controls or bundled fonts. Icons are Material Symbols vector drawables in `res/drawable` (`ic_add`, `ic_remove`), not the `material-icons` libraries.
+- Android 17 is the only supported version: `minSdk` and `targetSdk` are both 37. Call the platform API directly, with no `Build.VERSION` checks, `*Compat` wrappers (`NotificationCompat`, `ContextCompat`, `WindowCompat`), backports such as `enableEdgeToEdge`, versioned resource folders (`-v34`), or fallbacks for other releases.
+- The UI is Material 3 (`androidx.compose.material3`, version from the Compose BOM), coloured by the dynamic (wallpaper) scheme with no brand fallback, since Android 17 always has it. Use M3 components and the default type scale rather than hand-rolled controls or bundled fonts. Icons are Material Symbols vector drawables in `res/drawable` (`ic_add`, `ic_remove`), not the `material-icons` libraries.
 - The brand lime (`@color/accent`) survives only outside the app: the launcher icon and the notification colour.
 
 ## Commands
@@ -35,11 +35,11 @@ This is a single-module app (`:app`, package `com.adelfino.resttimer`). It is a 
   - an exact `ELAPSED_REALTIME_WAKEUP` alarm. It fires `RestAlarmReceiver`, which passes the alarm's action straight back to the service.
 - The `alerting` flag guards against two elapse events.
 - Two notification channels are created in `RestTimerApplication`, both silent; the service drives the vibration itself:
-  - Countdown: low importance, uses the platform chronometer so the service never redraws it.
+  - Countdown: low importance. The notification is a Live Update (`setRequestPromotedOngoing`, with the `POST_PROMOTED_NOTIFICATIONS` permission) laid out by Android 17's `MetricStyle`. Its first metric is a timer that counts down to `deadlineRealtime`. The platform ticks that timer, so the service never redraws it, and the status-bar chip shows it. The second metric is the set. The Cancel action carries `SEMANTIC_ACTION_STOP`.
   - Alert: high importance, with a full-screen intent.
 - A notification can't change channel in place, so on elapse the foreground notification moves from id 1 to id 2.
 - A second alarm stops the alert after `ALERT_TIMEOUT_MILLIS`.
 
 **Process-death recovery.** If the restored phase isn't `IDLE`, `MainActivity` sends `ACTION_RESYNC` to rebuild the notification, alarm and alert. A pending alarm reaches the service on its own anyway.
 
-**UI.** `MainActivity` hosts `ui/RestTimerScreen`. While the phase is `ELAPSED` it calls `setShowWhenLocked`/`setTurnScreenOn` so that the full-screen intent can wake the screen and appear over the keyguard. Meanwhile `RestTimerTheme(alerting)` switches the dynamic colour scheme instantly to its opposite brightness (dark to light, or light to dark), standing in for the web app's CSS inversion. That rule lives in `isDarkScheme` (`ui/theme/Theme.kt`). The window theme starts the system-bar icons at the system's brightness (`?android:attr/isLightTheme`). `MainActivity` applies the same rule through `window.insetsController`, so the icons flip with the scheme. The app is edge-to-edge because Android 16 enforces it, not because of any call.
+**UI.** `MainActivity` hosts `ui/RestTimerScreen`. While the phase is `ELAPSED` it calls `setShowWhenLocked`/`setTurnScreenOn` so that the full-screen intent can wake the screen and appear over the keyguard. Meanwhile `RestTimerTheme(alerting)` switches the dynamic colour scheme instantly to its opposite brightness (dark to light, or light to dark), standing in for the web app's CSS inversion. That rule lives in `isDarkScheme` (`ui/theme/Theme.kt`). The window theme starts the system-bar icons at the system's brightness (`?android:attr/isLightTheme`). `MainActivity` applies the same rule through `window.insetsController`, so the icons flip with the scheme. The app is edge-to-edge because Android 17 enforces it, not because of any call.
