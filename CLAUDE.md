@@ -13,7 +13,7 @@ The constraints, toolchain and commands shared with the other Kotlin projects ar
 ## Commands
 
 ```sh
-./gradlew assembleRelease      # R8-minified + resource-shrunk; unsigned (no signing config)
+./gradlew assembleRelease      # not minified (no R8); unsigned (no signing config)
 ```
 
 There are no tests yet: no `test`/`androidTest` source sets and no test dependencies.
