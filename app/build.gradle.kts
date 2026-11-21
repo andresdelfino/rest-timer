@@ -3,6 +3,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// APKs are named rest-timer-<buildType>.apk instead of app-<buildType>.apk.
+base {
+    archivesName = "rest-timer"
+}
+
 android {
     namespace = "com.adelfino.resttimer"
     compileSdk = 37
